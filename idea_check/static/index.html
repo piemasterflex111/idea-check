@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Idea Check</title>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --ink:#1d1d1b; --muted:#6b6b66; --line:#e2e2dd;
+          --build:#1f7a3d; --ask:#a86400; --skip:#b3261e; --accent:#2b59c3; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141413; --card:#1f1f1d; --ink:#ececea; --muted:#a3a39d; --line:#33332f;
+            --build:#5cc17f; --ask:#f0a43a; --skip:#f2766c; --accent:#7ea2ff; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.5 system-ui, -apple-system, sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  form, .idea { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  label { display:block; font-weight:600; margin:12px 0 4px; }
+  label:first-child { margin-top:0; }
+  textarea { width:100%; min-height:64px; padding:8px; font:inherit; color:inherit;
+             background:var(--bg); border:1px solid var(--line); border-radius:8px; resize:vertical; }
+  button { margin-top:16px; width:100%; padding:12px; font:inherit; font-weight:600;
+           color:#fff; background:var(--accent); border:0; border-radius:8px; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  #error { color:var(--skip); margin-top:12px; }
+  h2 { font-size:1.1rem; margin:32px 0 12px; }
+  .idea { margin-bottom:12px; }
+  .idea h3 { margin:0 0 8px; font-size:1rem; }
+  .verdict { display:inline-block; font-weight:700; padding:2px 10px; border-radius:99px; color:#fff; font-size:.85rem; }
+  .v-Build { background:var(--build); } .v-Ask-first { background:var(--ask); } .v-Skip { background:var(--skip); }
+  dl { margin:8px 0 0; } dt { font-weight:600; margin-top:8px; } dd { margin:0; }
+  .when { color:var(--muted); font-size:.85rem; }
+  .empty { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Idea Check</h1>
+  <p class="sub">Answer three questions before you build anything.</p>
+
+  <form id="form">
+    <label for="idea">Your idea</label>
+    <textarea id="idea" required placeholder="A tool that..."></textarea>
+    <label for="who">1. Who has this problem? A real person you can name.</label>
+    <textarea id="who" required></textarea>
+    <label for="today">2. What do they do about it today?</label>
+    <textarea id="today" required></textarea>
+    <label for="cost">3. What does it cost them now? Time, money or mistakes, rough number.</label>
+    <textarea id="cost" required></textarea>
+    <button id="go" type="submit">Check it</button>
+    <div id="error" role="alert"></div>
+  </form>
+
+  <h2>Your ideas</h2>
+  <div id="list"><p class="empty">Nothing checked yet.</p></div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function card(item) {
+  const r = item.result;
+  return `<article class="idea">
+    <span class="verdict v-${r.verdict.replace(" ", "-")}">${esc(r.verdict)}</span>
+    <h3>${esc(item.idea)}</h3>
+    <div class="when">${new Date(item.created_at).toLocaleString()}</div>
+    <dl>
+      <dt>Why</dt><dd>${esc(r.why)}</dd>
+      <dt>Missing facts</dt><dd>${esc(r.missing_facts)}</dd>
+      <dt>Question to send</dt><dd>${esc(r.question_to_send)}</dd>
+      <dt>Done means</dt><dd>${esc(r.done_means)}</dd>
+      <dt>First version</dt><dd>${esc(r.first_version)}</dd>
+    </dl>
+  </article>`;
+}
+
+async function load() {
+  const items = await (await fetch("/api/ideas")).json();
+  $("list").innerHTML = items.length ? items.map(card).join("") : '<p class="empty">Nothing checked yet.</p>';
+}
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("error").textContent = "";
+  $("go").disabled = true;
+  $("go").textContent = "Checking...";
+  const body = Object.fromEntries(["idea", "who", "today", "cost"].map((k) => [k, $(k).value]));
+  try {
+    const res = await fetch("/api/ideas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Something went wrong.");
+    e.target.reset();
+    await load();
+  } catch (err) {
+    $("error").textContent = err.message;
+  } finally {
+    $("go").disabled = false;
+    $("go").textContent = "Check it";
+  }
+});
+
+load();
+</script>
+</body>
+</html>
