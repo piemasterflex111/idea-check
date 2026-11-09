@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How My Model Y Works</title>
+<style>
+:root{
+  --bg:#05070d; --panel:#0c111c; --ink:#e9eef8; --dim:#7d8aa3; --line:#22304a;
+  --body:#1a2336; --edge:#3a4b6b;
+  --ac:#ff9f43; --dc:#ff5f6d; --regen:#3ddc97; --lv:#ffd166; --cool:#4cc9f0; --hot:#ff7b54;
+  --vision:#7cf3ff; --cmd:#c77dff; --net:#8fa3c7;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:baseline;gap:12px;padding:12px 16px 4px}
+header h1{font-size:15px;margin:0;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:600}
+header .car{font-size:13px;color:var(--dim)}
+#stage{flex:1;min-height:0;position:relative}
+svg#film{width:100%;height:100%;display:block}
+#chapter{position:absolute;left:16px;top:6px;pointer-events:none}
+#chapter .num{font-size:12px;color:var(--dim);letter-spacing:.2em}
+#chapter .t{font-size:clamp(20px,3.2vw,34px);font-weight:700;opacity:0;transform:translateY(8px);transition:all .6s}
+#chapter.show .t{opacity:1;transform:none}
+#facts{position:absolute;right:16px;top:10px;display:flex;flex-direction:column;gap:6px;max-width:min(320px,45vw);align-items:flex-end}
+.fact{background:rgba(12,17,28,.88);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;opacity:0;transform:translateX(12px);transition:all .5s}
+.fact.show{opacity:1;transform:none}
+.fact b{color:var(--vision);font-weight:600}
+.fact.guess{border-style:dashed}
+.fact.guess::before{content:"≈ estimate · ";color:var(--lv)}
+#caption{background:linear-gradient(transparent,rgba(5,7,13,.96) 18%);padding:10px 16px 6px;min-height:118px}
+#think{font-size:12px;color:var(--cmd);letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px}
+#line{font-size:clamp(15px,2vw,19px);max-width:900px;min-height:3.2em}
+#line .cursor{display:inline-block;width:.55em;height:1em;background:var(--ink);vertical-align:-2px;margin-left:2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+#controls{display:flex;align-items:center;gap:8px;padding:6px 16px 12px;flex-wrap:wrap}
+button{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}
+button:hover{border-color:var(--edge)}
+#dots{display:flex;gap:6px;flex-wrap:wrap;margin-left:6px}
+#dots span{width:22px;height:6px;border-radius:3px;background:var(--line);cursor:pointer}
+#dots span.on{background:var(--vision)}
+#dots span.done{background:#3c5272}
+/* SVG parts */
+.part{opacity:.18;transition:opacity .8s, filter .8s}
+.part.on{opacity:1;filter:drop-shadow(0 0 6px currentColor)}
+.part.seen{opacity:.55}
+.lbl{font-size:11px;fill:var(--ink);opacity:0;transition:opacity .6s}
+.lbl.on{opacity:1}
+.flow{fill:none;stroke-width:3;stroke-linecap:round;stroke-dasharray:6 10;opacity:0;transition:opacity .6s}
+.flow.on{opacity:1;animation:run 1s linear infinite}
+.flow.rev.on{animation:runrev 1s linear infinite}
+@keyframes run{to{stroke-dashoffset:-16}}
+@keyframes runrev{to{stroke-dashoffset:16}}
+.grid line{stroke:#0f1626}
+@media (max-width:640px){
+  #facts{position:static;max-width:none;align-items:stretch;padding:0 16px}
+  #stage{display:flex;flex-direction:column}
+  svg#film{flex:1;min-height:0}
+  #chapter{position:static;padding:0 16px}
+  #caption{min-height:150px}
+}
+</style>
+</head>
+<body>
+<header><h1>How my car works</h1><span class="car">2022 Model Y · Dual Motor · HW3</span></header>
+<div id="stage">
+  <div id="chapter"><div class="num" id="cnum"></div><div class="t" id="ctitle"></div></div>
+  <svg id="film" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" aria-label="Animated top view of a Tesla Model Y showing its parts">
+    <defs>
+      <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#1b2a48"/><stop offset="1" stop-color="#05070d"/></radialGradient>
+    </defs>
+    <rect x="-500" y="-300" width="2000" height="1200" fill="url(#glow)"/>
+    <g class="grid" id="gridlines"></g>
+
+    <!-- outside world -->
+    <g id="grid" class="part" style="color:var(--ac)">
+      <rect x="70" y="425" width="100" height="90" rx="10" fill="#141c2c" stroke="currentColor" stroke-width="2"/>
+      <path d="M115 445 l-12 22 h14 l-8 22 l22 -30 h-14 l10 -14z" fill="currentColor"/>
+    </g>
+    <text class="lbl" data-for="grid" x="72" y="532">Wall outlet / charger</text>
+    <g id="cloud" class="part" style="color:var(--net)">
+      <path d="M830 120 a22 22 0 0 1 4-43 a30 30 0 0 1 56-8 a22 22 0 0 1 32 22 a18 18 0 0 1-6 29z" fill="#141c2c" stroke="currentColor" stroke-width="2"/>
+    </g>
+    <text class="lbl" data-for="cloud" x="836" y="140">Tesla servers</text>
+
+    <!-- car body -->
+    <path id="body" d="M380 50 Q500 30 620 50 Q680 62 684 120 L690 470 Q688 548 620 560 Q500 575 380 560 Q312 548 310 470 L316 120 Q320 62 380 50z" fill="var(--body)" stroke="var(--edge)" stroke-width="2"/>
+    <path d="M345 185 Q500 165 655 185 L650 205 Q500 190 350 205z" fill="#24324c" opacity=".8"/>
+    <path d="M350 520 Q500 535 650 520 L646 500 Q500 512 354 500z" fill="#24324c" opacity=".8"/>
+    <g id="wheels" class="part" style="color:#9fb0cc">
+      <rect x="292" y="112" width="26" height="74" rx="8" fill="#0b0f18" stroke="currentColor"/>
+      <rect x="682" y="112" width="26" height="74" rx="8" fill="#0b0f18" stroke="currentColor"/>
+      <rect x="292" y="452" width="26" height="74" rx="8" fill="#0b0f18" stroke="currentColor"/>
+      <rect x="682" y="452" width="26" height="74" rx="8" fill="#0b0f18" stroke="currentColor"/>
+    </g>
+    <text x="500" y="22" text-anchor="middle" style="font-size:11px;fill:var(--dim)">▲ FRONT</text>
+
+    <!-- battery pack -->
+    <g id="pack" class="part" style="color:var(--dc)">
+      <rect x="350" y="250" width="300" height="170" rx="10" fill="#2a1520" stroke="currentColor" stroke-width="2"/>
+      <g id="cells" fill="currentColor" opacity=".55"></g>
+    </g>
+    <text class="lbl" data-for="pack" x="356" y="244">Battery pack (under the floor)</text>
+
+    <!-- motors and inverters -->
+    <g id="mot_f" class="part" style="color:var(--dc)">
+      <circle cx="500" cy="150" r="26" fill="#2a1520" stroke="currentColor" stroke-width="2"/>
+      <path d="M488 150 h24 M500 138 v24" stroke="currentColor" stroke-width="2"/>
+    </g>
+    <text class="lbl" data-for="mot_f" x="420" y="128">Front motor</text>
+    <g id="inv_f" class="part" style="color:var(--hot)"><rect x="540" y="135" width="40" height="30" rx="5" fill="#2b1a12" stroke="currentColor" stroke-width="2"/></g>
+    <text class="lbl" data-for="inv_f" x="586" y="154">Inverter</text>
+    <g id="mot_r" class="part" style="color:var(--dc)">
+      <circle cx="500" cy="500" r="28" fill="#2a1520" stroke="currentColor" stroke-width="2"/>
+      <path d="M487 500 h26 M500 487 v26" stroke="currentColor" stroke-width="2"/>
+    </g>
+    <text class="lbl" data-for="mot_r" x="420" y="546">Rear motor</text>
+    <g id="inv_r" class="part" style="color:var(--hot)"><rect x="540" y="487" width="44" height="28" rx="5" fill="#2b1a12" stroke="currentColor" stroke-width="2"/></g>
+    <text class="lbl" data-for="inv_r" x="590" y="506">Inverter</text>
+
+    <!-- charging + power conversion -->
+    <g id="chargeport" class="part" style="color:var(--ac)"><circle cx="322" cy="480" r="9" fill="#2b200f" stroke="currentColor" stroke-width="2"/></g>
+    <text class="lbl" data-for="chargeport" x="200" y="470">Charge port</text>
+    <g id="obc" class="part" style="color:var(--ac)"><rect x="378" y="430" width="52" height="26" rx="4" fill="#2b200f" stroke="currentColor" stroke-width="2"/></g>
+    <text class="lbl" data-for="obc" x="374" y="470">Charger</text>
+    <g id="dcdc" class="part" style="color:var(--lv)"><rect x="436" y="430" width="44" height="26" rx="4" fill="#2b2810" stroke="currentColor" stroke-width="2"/></g>
+    <text class="lbl" data-for="dcdc" x="436" y="470">DC-DC</text>
+    <g id="lv" class="part" style="color:var(--lv)"><rect x="366" y="84" width="54" height="30" rx="4" fill="#2b2810" stroke="currentColor" stroke-width="2"/><text x="393" y="104" text-anchor="middle" style="font-size:11px;fill:currentColor">12V</text></g>
+    <text class="lbl" data-for="lv" x="330" y="78">Small battery</text>
+
+    <!-- thermal -->
+    <g id="octo" class="part" style="color:var(--cool)"><rect x="436" y="78" width="58" height="26" rx="13" fill="#0f2230" stroke="currentColor" stroke-width="2"/><circle cx="465" cy="91" r="6" fill="currentColor"/></g>
+    <text class="lbl" data-for="octo" x="500" y="88">Heat pump valve</text>
+
+    <!-- brains -->
+    <g id="gtw" class="part" style="color:var(--net)"><rect x="372" y="210" width="42" height="22" rx="4" fill="#141c2c" stroke="currentColor" stroke-width="2"/></g>
+    <text class="lbl" data-for="gtw" x="330" y="228" text-anchor="end">Gateway</text>
+    <g id="mcu" class="part" style="color:var(--net)"><rect x="468" y="210" width="64" height="22" rx="4" fill="#141c2c" stroke="currentColor" stroke-width="2"/></g>
+    <text class="lbl" data-for="mcu" x="470" y="246">Screen PC (AMD Ryzen)</text>
+    <g id="fsd" class="part" style="color:var(--cmd)">
+      <rect x="584" y="206" width="52" height="30" rx="4" fill="#1d1230" stroke="currentColor" stroke-width="2"/>
+      <rect x="590" y="213" width="18" height="16" fill="currentColor" opacity=".7"/><rect x="612" y="213" width="18" height="16" fill="currentColor" opacity=".7"/>
+    </g>
+    <text class="lbl" data-for="fsd" x="642" y="226">HW3 computer</text>
+    <g id="lte" class="part" style="color:var(--net)"><rect x="598" y="430" width="36" height="22" rx="4" fill="#141c2c" stroke="currentColor" stroke-width="2"/><path d="M616 430 v-10 m-6 4 q6-8 12 0" stroke="currentColor" fill="none"/></g>
+    <text class="lbl" data-for="lte" x="640" y="446">LTE + Wi-Fi</text>
+
+    <!-- cameras -->
+    <g id="cams" class="part" style="color:var(--vision)">
+      <circle cx="489" cy="195" r="5" fill="currentColor"/><circle cx="500" cy="195" r="5" fill="currentColor"/><circle cx="511" cy="195" r="5" fill="currentColor"/>
+      <circle cx="318" cy="200" r="5" fill="currentColor"/><circle cx="682" cy="200" r="5" fill="currentColor"/>
+      <circle cx="318" cy="320" r="5" fill="currentColor"/><circle cx="682" cy="320" r="5" fill="currentColor"/>
+      <circle cx="500" cy="557" r="5" fill="currentColor"/>
+    </g>
+    <g id="cones" class="part" style="color:var(--vision)">
+      <path d="M500 195 L420 20 L580 20z" fill="currentColor" opacity=".12"/>
+      <path d="M318 200 L180 330 L180 470z" fill="currentColor" opacity=".08"/>
+      <path d="M682 200 L820 330 L820 470z" fill="currentColor" opacity=".08"/>
+      <path d="M318 320 L170 140 L170 60z" fill="currentColor" opacity=".08"/>
+      <path d="M682 320 L830 140 L830 60z" fill="currentColor" opacity=".08"/>
+      <path d="M500 557 L440 600 L560 600z" fill="currentColor" opacity=".12"/>
+    </g>
+    <text class="lbl" data-for="cams" x="520" y="190">3 front cameras</text>
+
+    <!-- flows -->
+    <path id="f_ac" class="flow" stroke="var(--ac)" d="M170 470 C240 470 280 480 322 480 L378 446"/>
+    <path id="f_dcc" class="flow" stroke="var(--dc)" d="M404 430 L404 420"/>
+    <path id="f_hv_r" class="flow" stroke="var(--dc)" d="M570 420 L570 487 M540 500 L528 500"/>
+    <path id="f_hv_f" class="flow" stroke="var(--dc)" d="M560 250 L560 165 M540 150 L526 150"/>
+    <path id="f_regen" class="flow rev" stroke="var(--regen)" d="M582 420 L582 487 M540 508 L528 508"/>
+    <path id="f_lv" class="flow" stroke="var(--lv)" d="M458 420 L458 430 M436 446 L340 446 L340 99 L366 99 M393 114 L393 210"/>
+    <path id="f_heat" class="flow" stroke="var(--cool)" d="M465 104 L465 240 L340 240 L340 425 L660 425 L660 240 L520 240 L520 150"/>
+    <path id="f_vision" class="flow" stroke="var(--vision)" d="M500 200 L590 212 M682 200 L630 210 M318 200 L584 222 M318 320 L586 232 M682 320 L626 236 M500 552 L600 236"/>
+    <path id="f_cmd" class="flow" stroke="var(--cmd)" d="M584 228 L414 228 M393 210 L393 150 L318 150 M600 206 L575 165 M636 222 L664 222 L664 470 L584 500"/>
+    <path id="f_bus" class="flow" stroke="var(--net)" d="M414 218 L468 218 M532 218 L584 218 M636 214 L650 214 L650 441 L634 441"/>
+    <path id="f_ota" class="flow" stroke="var(--net)" d="M616 420 C700 300 800 220 860 125"/>
+  </svg>
+  <div id="facts"></div>
+</div>
+<div id="caption">
+  <div id="think">thinking…</div>
+  <div id="line"></div>
+</div>
+<div id="controls">
+  <button id="prev" aria-label="Previous scene">◀</button>
+  <button id="play" aria-label="Play or pause">❚❚ Pause</button>
+  <button id="next" aria-label="Next scene">▶</button>
+  <div id="dots"></div>
+</div>
+
+<script>
+// Draw floor grid and battery cells.
+(function(){
+  const g=document.getElementById('gridlines');let s='';
+  for(let x=-500;x<=1500;x+=50)s+=`<line x1="${x}" y1="-300" x2="${x}" y2="900"/>`;
+  for(let y=-300;y<=900;y+=50)s+=`<line x1="-500" y1="${y}" x2="1500" y2="${y}"/>`;
+  g.innerHTML=s;
+  const c=document.getElementById('cells');let t='';
+  for(let r=0;r<4;r++)for(let k=0;k<4;k++)t+=`<rect x="${362+k*72}" y="${262+r*39}" width="64" height="31" rx="4"/>`;
+  c.innerHTML=t;
+})();
+
+// Each scene: a camera framing, the parts that light up, the flows that move, the narrator's thought lines, and checkable facts.
+const SCENES=[
+ {title:"Start from zero",view:[0,0,1000,600],on:["body","wheels"],flows:[],
+  lines:["First principle: a car needs only three things. Stored energy, a way to turn it into motion, and a way to control that motion.",
+         "Everything else in this Model Y is one of those three jobs, or a helper for them. Let me build it piece by piece."],
+  facts:[["2022 Model Y, Dual Motor","from your app"],["Built in Fremont","VIN letter 11 = F"]]},
+ {title:"Energy goes in",view:[40,380,520,220],on:["grid","chargeport","obc","pack"],flows:["f_ac","f_dcc"],
+  lines:["Your house gives alternating current (AC). It flips direction 60 times a second.",
+         "A battery can only store direct current (DC). So the car carries its own charger, a box that turns AC into DC.",
+         "At a Supercharger this box is skipped. The station does the conversion and pushes DC straight into the pack."],
+  facts:[["Home charging max ≈ 11.5 kW (48 A)","Tesla spec"],["Supercharger: DC, up to 250 kW","Tesla spec"]]},
+ {title:"The battery",view:[300,220,400,240],on:["pack"],flows:[],
+  lines:["The pack is thousands of small cylinder cells, each about the size of a thumb.",
+         "Cells are wired in series to stack up voltage, and in parallel to add capacity. Same idea as AA batteries in a flashlight, times thousands.",
+         "It sits flat under the floor. That keeps the weight low, which is why the car feels planted in corners."],
+  facts:[["About 4,400 cells (2170 size)","Long Range packs"],["≈ 350 V nominal","guess"],["≈ 75 kWh","guess"]]},
+ {title:"Energy becomes motion",view:[330,100,360,440],on:["pack","inv_f","inv_r","mot_f","mot_r"],flows:["f_hv_f","f_hv_r"],
+  lines:["Motors want AC, but the battery has DC. So each motor gets an inverter.",
+         "The inverter switches the DC on and off thousands of times a second to fake a smooth 3-phase AC wave.",
+         "Faster wave means faster spin. Stronger wave means more push. That's the whole accelerator pedal, in one sentence."],
+  facts:[["Rear: permanent-magnet motor","efficient cruiser"],["Front: induction motor","adds power, coasts freely"],["Dual Motor = AWD","from your app"]]},
+ {title:"Running it backwards",view:[420,380,260,180],on:["pack","inv_r","mot_r"],flows:["f_regen"],
+  lines:["Here's the elegant part. A motor spun by the wheels becomes a generator.",
+         "When you lift off the pedal, the inverter runs in reverse and pushes energy back into the battery. That's why you rarely touch the brake."],
+  facts:[["Regenerative braking","recovers energy when slowing"]]},
+ {title:"The small battery",view:[310,60,220,420],on:["pack","dcdc","lv","gtw","mcu"],flows:["f_lv"],
+  lines:["Lights, door locks, the screen and the computers can't use 350 volts. They want about 12.",
+         "A DC-DC converter steps the big battery down, and a small battery holds 12 volts steady.",
+         "If that small battery dies, the car can't even wake up, even with a full main pack."],
+  facts:[["DC-DC: high voltage → ~12 V","always on"],["Small battery type","depends on build date"]]},
+ {title:"Staying at the right temperature",view:[300,60,400,400],on:["octo","pack","mot_f","mot_r"],flows:["f_heat"],
+  lines:["Batteries are picky. Too cold and they charge slowly. Too hot and they age fast.",
+         "One coolant loop connects the pack, the motors and the cabin. A single valve block reroutes it.",
+         "The heat pump moves heat instead of making it, like a fridge running in reverse. It even uses waste heat from the motors."],
+  facts:[["Heat pump: standard on Model Y","since 2020 launch"],["'Octovalve' = the routing valve","Tesla's name"]]},
+ {title:"Eyes",view:[120,0,760,600],on:["cams","cones"],flows:[],
+  lines:["Now control. To drive itself, the car first has to see.",
+         "Eight cameras give a full circle: three forward, two on the front fenders looking back, two in the door pillars, one in the rear.",
+         "No radar, no lidar. Tesla bet that cameras plus software can do what human eyes plus a brain do."],
+  facts:[["8 cameras, about 1.2 megapixels each","HW3 cameras"],["No radar on 2022 Model Y","Tesla Vision"]]},
+ {title:"The brain",view:[440,150,260,140],on:["fsd","cams"],flows:["f_vision"],
+  lines:["Every camera frame goes into the HW3 computer behind the glovebox. Your service screen said exactly this: Full Self-Driving Computer 3.",
+         "It has two chips. Both run the driving software, and their answers are compared as a safety check.",
+         "The software turns pixels into a 3D picture: lanes, cars, people, distances. Then it plans a path."],
+  facts:[["HW3: 2 Tesla-designed chips","on your car"],["≈ 144 trillion ops per second","Tesla's 2019 number"]]},
+ {title:"Brain to muscles",view:[300,100,400,440],on:["fsd","gtw","inv_f","inv_r","wheels"],flows:["f_cmd"],
+  lines:["A plan is useless until it moves something. The computer sends three kinds of commands: steer, accelerate, brake.",
+         "These travel as messages on the car's wiring network to the steering motor, the inverters and the brake booster.",
+         "Same path your own foot and hands use. The car never physically disconnects you."],
+  facts:[["Steer-by-wire? No","steering column still mechanical"]]},
+ {title:"The nervous system",view:[340,180,340,290],on:["gtw","mcu","fsd","lte"],flows:["f_bus"],
+  lines:["Dozens of small controllers talk on shared wires called CAN bus. Think of it as a group chat between modules.",
+         "The gateway is the bouncer. It decides which messages may cross between sections. Your service screen showed 'GTW LOCKED', meaning that bouncer is locked down.",
+         "The screen computer, an AMD Ryzen in your car, runs maps and music. It's separate from the driving computer on purpose."],
+  facts:[["Screen PC: AMD Ryzen","your service screen"],["Gateway (GTW): locked","your service screen"]]},
+ {title:"Talking to Tesla",view:[560,40,420,440],on:["lte","cloud"],flows:["f_ota"],
+  lines:["The car has a cell modem and Wi-Fi. That's how the app sees it and how updates arrive overnight.",
+         "An update can change how the motors, brakes and driving software behave, with no shop visit. That's why your car got new features since 2022."],
+  facts:[["Software 2026.38.6","from your app"],["Modem + Wi-Fi","your service screen"]]},
+ {title:"Why HW3 hits a wall",view:[440,150,260,140],on:["fsd"],flows:["f_vision"],
+  lines:["Back to the brain, because this is the part that matters for the news you saw.",
+         "Newer driving software uses bigger neural networks. Bigger networks need more compute and memory than HW3 has.",
+         "Tesla has said HW3 can't run unsupervised FSD. HW4 cars have sharper cameras and a faster computer. Your eyes and muscles are fine. The brain is what's out of date."],
+  facts:[["HW3 excluded from unsupervised FSD","Tesla, 2025"],["HW4 in Model Y from early 2023","not your car"],["Upgrade path for HW3","none announced"]]},
+ {title:"The whole machine",view:[0,0,1000,600],on:["grid","chargeport","obc","pack","inv_f","inv_r","mot_f","mot_r","dcdc","lv","octo","cams","fsd","gtw","mcu","lte","cloud","wheels"],
+  flows:["f_ac","f_hv_f","f_hv_r","f_lv","f_vision","f_cmd","f_bus"],
+  lines:["Put together: energy in, stored under the floor, turned into motion by inverters and motors, kept at the right temperature.",
+         "Eight eyes feed one brain, the brain talks to the muscles through a network, and the cloud keeps it all updated.",
+         "Three jobs, like we started with. Store energy, make motion, control it."],
+  facts:[["Tap any scene to replay","◀ ▶"]]}
+];
+
+const svg=document.getElementById('film');
+const parts=[...document.querySelectorAll('.part')];
+const flows=[...document.querySelectorAll('.flow')];
+const labels=[...document.querySelectorAll('.lbl')];
+const lineEl=document.getElementById('line'),factsEl=document.getElementById('facts');
+const chap=document.getElementById('chapter');
+let idx=0,playing=true,timer=null,typing=null,curView=[0,0,1000,600],viewAnim=null;
+const seen=new Set();
+
+const dots=document.getElementById('dots');
+SCENES.forEach((s,i)=>{const d=document.createElement('span');d.title=s.title;d.onclick=()=>go(i);dots.appendChild(d);});
+
+function animView(to,ms=1400){
+  cancelAnimationFrame(viewAnim);const from=curView.slice();const t0=performance.now();
+  const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+  const step=now=>{const t=Math.min(1,(now-t0)/ms),e=ease(t);
+    curView=from.map((v,k)=>v+(to[k]-v)*e);svg.setAttribute('viewBox',curView.join(' '));
+    if(t<1)viewAnim=requestAnimationFrame(step);};
+  viewAnim=requestAnimationFrame(step);
+}
+
+function typeLines(lines,done){
+  clearTimeout(typing);let li=0,ci=0;
+  const tick=()=>{
+    const L=lines[li];ci++;
+    lineEl.innerHTML=L.slice(0,ci).replace(/</g,'&lt;')+'<span class="cursor"></span>';
+    if(ci<L.length){typing=setTimeout(tick,22);return;}
+    li++;ci=0;
+    if(li<lines.length){typing=setTimeout(tick,Math.max(1600,L.length*28));}
+    else typing=setTimeout(done,Math.max(2400,L.length*30));
+  };
+  tick();
+}
+
+function go(i){
+  clearTimeout(timer);clearTimeout(typing);
+  idx=(i+SCENES.length)%SCENES.length;const s=SCENES[idx];
+  SCENES.slice(0,idx).forEach(p=>p.on.forEach(id=>seen.add(id)));
+  parts.forEach(p=>{p.classList.toggle('on',s.on.includes(p.id));p.classList.toggle('seen',!s.on.includes(p.id)&&seen.has(p.id));});
+  labels.forEach(l=>l.classList.toggle('on',s.on.includes(l.dataset.for)&&!(idx===SCENES.length-1)));
+  flows.forEach(f=>f.classList.remove('on'));
+  setTimeout(()=>flows.forEach(f=>f.classList.toggle('on',s.flows.includes(f.id))),900);
+  animView(s.view);
+  chap.classList.remove('show');
+  document.getElementById('cnum').textContent=`SCENE ${idx+1} / ${SCENES.length}`;
+  setTimeout(()=>{document.getElementById('ctitle').textContent=s.title;chap.classList.add('show');},250);
+  factsEl.innerHTML='';
+  s.facts.forEach((f,k)=>{const d=document.createElement('div');
+    const g=f[1]==='guess';d.className='fact'+(g?' guess':'');
+    d.innerHTML=`<b>${f[0]}</b>${g?'':' · <span style="color:var(--dim)">'+f[1]+'</span>'}`;
+    factsEl.appendChild(d);setTimeout(()=>d.classList.add('show'),1200+k*500);});
+  [...dots.children].forEach((d,k)=>{d.className=k===idx?'on':k<idx?'done':'';});
+  typeLines(s.lines,()=>{if(playing&&idx<SCENES.length-1)go(idx+1);});
+}
+document.getElementById('play').onclick=()=>{playing=!playing;
+  document.getElementById('play').textContent=playing?'❚❚ Pause':'▶ Play';
+  if(playing)go(idx===SCENES.length-1?0:idx);};
+document.getElementById('next').onclick=()=>go(idx+1);
+document.getElementById('prev').onclick=()=>go(idx-1);
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(idx+1);if(e.key==='ArrowLeft')go(idx-1);if(e.key===' '){e.preventDefault();document.getElementById('play').click();}});
+setTimeout(()=>go(0),300);
+</script>
+</body>
+</html>
